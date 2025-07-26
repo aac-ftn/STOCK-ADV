@@ -64,13 +64,10 @@ with tab2:
         st.info("No trades added yet. Use the 'Add Trade' tab to get started.")
 
     st.markdown("---")
-    st.header("🤖 AI Trade Ideas")
+    st.header("🤖 Live AI Trade Ideas")
 
-    # Simulated AI picks (can be replaced with dynamic model)
-    ai_picks = pd.DataFrame([
-        {"Stock": "INFY", "Horizon": "Short", "Buy Range": "₹1450–1470", "Stop": "₹1425", "Target": "₹1550", "Upside": "5–6%", "Reason": "MACD crossover"},
-        {"Stock": "HDFCBANK", "Horizon": "Medium", "Buy Range": "₹1520–1550", "Stop": "₹1470", "Target": "₹1700", "Upside": "10–12%", "Reason": "Fundamental + delivery volume"},
-        {"Stock": "LT", "Horizon": "Long", "Buy Range": "₹3440–3480", "Stop": "₹3300", "Target": "₹3900", "Upside": "12–14%", "Reason": "Order book + sector trend"}
-    ])
-
-    st.dataframe(ai_picks, use_container_width=True)
+    try:
+        ai_picks = pd.read_csv("live_ai_picks.csv")
+        st.dataframe(ai_picks, use_container_width=True)
+    except FileNotFoundError:
+        st.warning("⚠️ No live AI picks file found. Please run the CSV generator script to populate live_ai_picks.csv.")
