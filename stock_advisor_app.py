@@ -56,25 +56,32 @@ with tab1:
 
 # --- Tab 2: Portfolio + AI Picks ---
 with tab2:
-    st.header("📊 Your Portfolio")
-if not st.session_state.portfolio.empty:
-    portfolio_df = st.session_state.portfolio.copy()
-    portfolio_df["Select"] = False
+     st.header("📊 Your Portfolio")
 
-    selected_indices = st.multiselect("Select trades to remove", portfolio_df.index, format_func=lambda i: f"{portfolio_df.loc[i, 'Stock']}")
+if not st.session_state.portfolio.empty:
+    updated_portfolio = []
+    delete_flags = []
+
+    st.write("### Select Trades to Remove")
+    for idx, row in st.session_state.portfolio.iterrows():
+        col1, col2 = st.columns([0.9, 0.1])
+        with col1:
+            st.write(f"**{row['Stock']}** | Qty: {row['Quantity']} | Buy: ₹{row['Buy Price']} | SL: ₹{row['Stop Loss']} | Target: ₹{row['Target']}")
+        with col2:
+            delete_flags.append(st.checkbox("❌", key=f"del_{idx}"))
 
     if st.button("🗑️ Delete Selected"):
-        st.session_state.portfolio.drop(index=selected_indices, inplace=True)
-        st.success(f"Deleted {len(selected_indices)} trade(s) from portfolio.")
+        for idx, flag in enumerate(delete_flags):
+            if not flag:
+                updated_portfolio.append(st.session_state.portfolio.iloc[idx])
+        st.session_state.portfolio = pd.DataFrame(updated_portfolio)
+        st.success("✅ Selected trade(s) removed.")
 
+    st.markdown("---")
     st.dataframe(st.session_state.portfolio.reset_index(drop=True), use_container_width=True)
+
 else:
     st.info("No trades added yet. Use the 'Add Trade' tab to get started.")
-    if not st.session_state.portfolio.empty:
-        st.dataframe(st.session_state.portfolio, use_container_width=True)
-    else:
-        st.info("No trades added yet. Use the 'Add Trade' tab to get started.")
-
     st.markdown("---")
     st.header("🤖 Live AI Trade Ideas")
 
