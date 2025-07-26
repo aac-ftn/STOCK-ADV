@@ -57,7 +57,20 @@ with tab1:
 
 # --- Tab 2: Portfolio + AI Picks ---
 with tab2:
-    st.header("📊 Your Portfolio")
+st.header("📊 Your Portfolio")
+if not st.session_state.portfolio.empty:
+    portfolio_df = st.session_state.portfolio.copy()
+    portfolio_df["Select"] = False
+
+    selected_indices = st.multiselect("Select trades to remove", portfolio_df.index, format_func=lambda i: f"{portfolio_df.loc[i, 'Stock']}")
+
+    if st.button("🗑️ Delete Selected"):
+        st.session_state.portfolio.drop(index=selected_indices, inplace=True)
+        st.success(f"Deleted {len(selected_indices)} trade(s) from portfolio.")
+
+    st.dataframe(st.session_state.portfolio.reset_index(drop=True), use_container_width=True)
+else:
+    st.info("No trades added yet. Use the 'Add Trade' tab to get started.")
     if not st.session_state.portfolio.empty:
         st.dataframe(st.session_state.portfolio, use_container_width=True)
     else:
