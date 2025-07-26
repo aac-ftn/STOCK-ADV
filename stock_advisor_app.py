@@ -1,4 +1,4 @@
-
+q
 import streamlit as st
 import pandas as pd
 
@@ -57,7 +57,7 @@ with tab1:
 
 # --- Tab 2: Portfolio + AI Picks ---
 with tab2:
-st.header("📊 Your Portfolio")
+    st.header("📊 Your Portfolio")
 if not st.session_state.portfolio.empty:
     portfolio_df = st.session_state.portfolio.copy()
     portfolio_df["Select"] = False
