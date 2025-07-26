@@ -1,87 +1,63 @@
+
 import streamlit as st
 import pandas as pd
 
-# Initialize session state for portfolio tracking
+st.set_page_config(page_title="AI Stock Advisor 🇮🇳", layout="wide")
+st.title("📈 AI Stock Advisor & Position Sizer (India Edition)")
+
+# --- Session Storage ---
 if "portfolio" not in st.session_state:
-    st.session_state.portfolio = pd.DataFrame(columns=[
-        "Stock", "Buy Price", "Quantity", "Stop Loss", "Target", "Status"
-    ])
+    st.session_state.portfolio = pd.DataFrame(columns=["Stock", "Buy Price", "Quantity", "Stop Loss", "Target"])
 
-# Sidebar settings
-st.sidebar.header("🧮 Portfolio Settings")
-portfolio_capital = st.sidebar.number_input("Total Portfolio Capital (₹)", value=500000)
-risk_per_trade_pct = st.sidebar.slider("Risk % per Trade", min_value=0.5, max_value=5.0, value=1.0, step=0.1)
-risk_amount = portfolio_capital * (risk_per_trade_pct / 100)
-
-# Tab layout
+# --- Tabs ---
 tab1, tab2 = st.tabs(["📥 Add Trade", "📊 Portfolio & AI Picks"])
 
-# --- Tab 1: Add Trade ---
+# --- Tab 1: Add Trade Form ---
 with tab1:
-    st.header("📥 Add Trade Candidate")
-    stock = st.text_input("Stock Ticker (e.g., TCS)", value="TCS")
-    buy_price = st.number_input("Buy Price (₹)", value=3800.0)
-    stop_loss = st.number_input("Stop Loss (₹)", value=3700.0)
-    target_price = st.number_input("Target Price (₹)", value=4050.0)
+    st.header("➕ Add Trade Candidate")
+    with st.form("trade_form"):
+        stock = st.text_input("Stock Ticker (e.g., TCS)").upper()
+        buy_price = st.number_input("Buy Price (₹)", min_value=0.0, format="%.2f")
+        quantity = st.number_input("Quantity", min_value=1, step=1)
+        stop_loss = st.number_input("Stop Loss (₹)", min_value=0.0, format="%.2f")
+        target = st.number_input("Target Price (₹)", min_value=0.0, format="%.2f")
+        submit = st.form_submit_button("📌 Calculate Position Size")
 
-    if st.button("🧠 Calculate & Add to Portfolio"):
-        if buy_price <= stop_loss:
-            st.error("❌ Stop loss must be below Buy Price.")
+    if submit:
+        if not stock or buy_price == 0 or stop_loss == 0 or target == 0:
+            st.warning("Please fill all fields.")
         else:
-            trade_risk = buy_price - stop_loss
-            quantity = int(risk_amount / trade_risk)
-            total_cost = quantity * buy_price
-            expected_profit = (target_price - buy_price) * quantity
-            upside_pct = ((target_price - buy_price) / buy_price) * 100
+            st.session_state.portfolio.loc[len(st.session_state.portfolio)] = [stock, buy_price, quantity, stop_loss, target]
+            st.success(f"✅ Added {stock} to your portfolio.")
 
-            # Append to portfolio
-            new_trade = {
-                "Stock": stock.upper(),
-                "Buy Price": buy_price,
-                "Quantity": quantity,
-                "Stop Loss": stop_loss,
-                "Target": target_price,
-                "Status": "Active"
-            }
-            st.session_state.portfolio = pd.concat(
-                [st.session_state.portfolio, pd.DataFrame([new_trade])],
-                ignore_index=True
-            )
-
-            st.success(f"Added {stock.upper()} to your portfolio!")
-            st.markdown(f"- Buy **{quantity} shares** at ₹{buy_price:.2f}")
-            st.markdown(f"- Total cost: ₹{total_cost:,.2f}")
-            st.markdown(f"- Target: ₹{target_price:.2f} → Upside: **{upside_pct:.2f}%**")
-            st.markdown(f"- Expected Profit: ₹{expected_profit:,.2f}")
-
-# --- Tab 2: Portfolio + AI Picks ---
+# --- Tab 2: Portfolio and AI Picks ---
 with tab2:
-     st.header("📊 Your Portfolio")
+    st.header("📊 Your Portfolio")
 
-if not st.session_state.portfolio.empty:
-    updated_portfolio = []
-    delete_flags = []
+    if not st.session_state.portfolio.empty:
+        updated_portfolio = []
+        delete_flags = []
 
-    st.write("### Select Trades to Remove")
-    for idx, row in st.session_state.portfolio.iterrows():
-        col1, col2 = st.columns([0.9, 0.1])
-        with col1:
-            st.write(f"**{row['Stock']}** | Qty: {row['Quantity']} | Buy: ₹{row['Buy Price']} | SL: ₹{row['Stop Loss']} | Target: ₹{row['Target']}")
-        with col2:
-            delete_flags.append(st.checkbox("❌", key=f"del_{idx}"))
+        st.write("### Select Trades to Remove")
+        for idx, row in st.session_state.portfolio.iterrows():
+            col1, col2 = st.columns([0.9, 0.1])
+            with col1:
+                st.write(f"**{row['Stock']}** | Qty: {row['Quantity']} | Buy: ₹{row['Buy Price']} | SL: ₹{row['Stop Loss']} | Target: ₹{row['Target']}")
+            with col2:
+                delete_flags.append(st.checkbox("❌", key=f"del_{idx}"))
 
-    if st.button("🗑️ Delete Selected"):
-        for idx, flag in enumerate(delete_flags):
-            if not flag:
-                updated_portfolio.append(st.session_state.portfolio.iloc[idx])
-        st.session_state.portfolio = pd.DataFrame(updated_portfolio)
-        st.success("✅ Selected trade(s) removed.")
+        if st.button("🗑️ Delete Selected"):
+            for idx, flag in enumerate(delete_flags):
+                if not flag:
+                    updated_portfolio.append(st.session_state.portfolio.iloc[idx])
+            st.session_state.portfolio = pd.DataFrame(updated_portfolio)
+            st.success("✅ Selected trade(s) removed.")
 
-    st.markdown("---")
-    st.dataframe(st.session_state.portfolio.reset_index(drop=True), use_container_width=True)
+        st.markdown("---")
+        st.dataframe(st.session_state.portfolio.reset_index(drop=True), use_container_width=True)
+    else:
+        st.info("No trades added yet. Use the 'Add Trade' tab to get started.")
 
-else:
-    st.info("No trades added yet. Use the 'Add Trade' tab to get started.")
     st.markdown("---")
     st.header("🤖 Live AI Trade Ideas")
 
