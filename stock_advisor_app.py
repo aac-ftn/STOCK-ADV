@@ -1,15 +1,37 @@
+
 import streamlit as st
 import pandas as pd
 import datetime
+import os
+import yfinance as yf
 
 st.set_page_config(page_title="AI Stock Advisor 🇮🇳", layout="wide")
 st.title("📈 AI Stock Advisor & Position Sizer (India Edition)")
 
+portfolio_path = "portfolio.csv"
 if "portfolio" not in st.session_state:
-    st.session_state.portfolio = pd.DataFrame(columns=["Stock", "Buy Price", "Quantity", "Stop Loss", "Target", "Date Added"])
+    if os.path.exists(portfolio_path):
+        st.session_state.portfolio = pd.read_csv(portfolio_path)
+        st.session_state.portfolio["Date Added"] = pd.to_datetime(st.session_state.portfolio["Date Added"]).dt.date
+    else:
+        st.session_state.portfolio = pd.DataFrame(columns=["Stock", "Buy Price", "Quantity", "Stop Loss", "Target", "Date Added"])
 
+def save_portfolio():
+    st.session_state.portfolio.to_csv(portfolio_path, index=False)
+
+def get_live_price(ticker):
+    try:
+        if not ticker.endswith(".NS"):
+            ticker += ".NS"
+        data = yf.Ticker(ticker).history(period="1d")
+        return float(data["Close"].iloc[-1])
+    except Exception:
+        return None
+
+# --- Tabs ---
 tab1, tab2 = st.tabs(["📥 Add Trade", "📊 Portfolio & AI Picks"])
 
+# --- Tab 1: Add Trade Form ---
 with tab1:
     st.header("➕ Add Trade Candidate")
     with st.form("trade_form"):
@@ -32,6 +54,7 @@ with tab1:
             st.session_state.portfolio.loc[len(st.session_state.portfolio)] = [
                 stock, buy_price, quantity, stop_loss, target, datetime.date.today()
             ]
+            save_portfolio()
             st.success(f"✅ Added {stock} to your portfolio with quantity {quantity}.")
 
     st.markdown("---")
@@ -42,10 +65,12 @@ with tab1:
             imported_df = pd.read_csv(uploaded_file)
             imported_df["Date Added"] = datetime.date.today()
             st.session_state.portfolio = pd.concat([st.session_state.portfolio, imported_df], ignore_index=True)
+            save_portfolio()
             st.success("✅ Portfolio imported successfully.")
         except Exception as e:
             st.error(f"❌ Error: {e}")
 
+# --- Tab 2: Portfolio and AI Picks ---
 with tab2:
     st.header("📊 Your Portfolio")
 
@@ -57,7 +82,17 @@ with tab2:
         for idx, row in st.session_state.portfolio.iterrows():
             col1, col2 = st.columns([0.9, 0.1])
             with col1:
-                st.write(f"**{row['Stock']}** | Qty: {row['Quantity']} | Buy: ₹{row['Buy Price']} | SL: ₹{row['Stop Loss']} | Target: ₹{row['Target']} | Added: {row['Date Added']}")
+                live_price = get_live_price(row['Stock'])
+                alert = ""
+                if live_price:
+                    sl_gap = abs((live_price - row["Stop Loss"]) / row["Stop Loss"])
+                    target_gap = abs((live_price - row["Target"]) / row["Target"])
+                    if sl_gap < 0.05:
+                        alert = "⚠️ Near Stop-Loss"
+                    elif target_gap < 0.05:
+                        alert = "🎯 Near Target"
+                price_info = f"Live ₹{live_price:.2f}" if live_price else "❌ No Price"
+                st.write(f"**{row['Stock']}** | Qty: {row['Quantity']} | Buy: ₹{row['Buy Price']} | SL: ₹{row['Stop Loss']} | Target: ₹{row['Target']} | {price_info} | {alert}")
             with col2:
                 delete_flags.append(st.checkbox("❌", key=f"del_{idx}"))
 
@@ -66,6 +101,7 @@ with tab2:
                 if not flag:
                     updated_portfolio.append(st.session_state.portfolio.iloc[idx])
             st.session_state.portfolio = pd.DataFrame(updated_portfolio)
+            save_portfolio()
             st.success("✅ Selected trade(s) removed.")
 
         st.markdown("---")
